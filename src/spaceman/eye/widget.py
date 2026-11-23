@@ -188,7 +188,7 @@ class TypingArea(TextArea):
 class EyeConsole(Widget):
     """The console, drawn as one piece of pixel art (box, metal mount, the eye on its corner), with the
     readouts above it to the right of the eye. You type inside it. Click the eye to make it blink; click the
-    underlined readouts (MODE, THINK) for a menu."""
+    underlined readouts (MODE, THINK and any skin buttons) for a menu."""
 
     DEFAULT_CSS = "EyeConsole { height: 15; overflow: hidden hidden; }"
 
@@ -209,7 +209,13 @@ class EyeConsole(Widget):
         self._eye_rows = None
         self.typing_rows = 1
         self.hud = {"status": skin.status_word("offline"), "model": "...", "ctx": "", "mode": "", "think": ""}
+        self.button_values = ["" for _ in skin.buttons]   # current value shown on each skin button
         self.hits: dict = {}        # readout name -> (row, first col, last col) as last drawn
+
+    def set_button_value(self, index: int, value: str) -> None:
+        if 0 <= index < len(self.button_values):
+            self.button_values[index] = value
+            self.refresh()
 
     def set_hud(self, **values) -> None:
         self.hud.update({k: v for k, v in values.items() if v is not None})
@@ -229,6 +235,8 @@ class EyeConsole(Widget):
         line2 = [(s.subtitle, style(s.rgb("hud_dim"), bg), None)]
         if h["ctx"]:
             line2 += [("   CTX ", lab, None), (h["ctx"], val, None)]
+        for i, b in enumerate(s.buttons):                  # skin buttons: "LABEL value ▾", click for a menu
+            line2 += [(f"   {b.label} ", lab, None), ((self.button_values[i] or "…") + " ▾", link, f"button:{i}")]
         return [
             [(s.title, style(s.rgb("hud_title"), bg, bold=True), None),
              (f"   ▸ {h['status']}", style(s.rgb("hud_status"), bg, bold=True), None)],
@@ -290,8 +298,12 @@ class EyeConsole(Widget):
         tw = tx1 - tx0 + 1
         bt_row = g["box_top_px"] // 2
         ew = g["eye_w"]
-        hx, room = ew + 5, w - ew - 6
-        hud = {bt_row - 3 + i: line for i, line in enumerate(self.hud_lines()) if bt_row - 3 + i >= 0}
+        # title and subtitle sit skin.title_indent cells right of the eye; the MODEL line keeps 5 (the mount is there)
+        hud = {}
+        for i, line in enumerate(self.hud_lines()):
+            if bt_row - 3 + i >= 0:
+                hx = ew + (self.skin.title_indent if i < 2 else 5)
+                hud[bt_row - 3 + i] = (hx, w - hx - 1, line)
         hits = {}
         colors = self.skin.box_colors()
         px = eyeart.dialogue_pixels(w, h, n, self.glow, self._eye_rows, colors)
@@ -302,9 +314,9 @@ class EyeConsole(Widget):
             top, bot = px[2 * r], px[2 * r + 1]
             x = 0
             while x < w:
-                if r in hud and x == hx and room > 0:
-                    used = 0
-                    for txt, st, name in hud[r]:
+                if r in hud and x == hud[r][0] and hud[r][1] > 0:
+                    used, room = 0, hud[r][1]
+                    for txt, st, name in hud[r][2]:
                         take = txt[: max(0, room - used)]
                         if take:
                             if name:

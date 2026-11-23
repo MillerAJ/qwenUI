@@ -141,3 +141,69 @@ async def test_layout_sizes(isolated, size):
         typing = app.typing
         assert console.region.contains(typing.region.x, typing.region.y)
         assert app.log_view.size.height >= 4
+
+
+BUTTON_SKIN = """
+name = "Buttons"
+title = "TEST"
+subtitle = "SUB"
+[layout]
+title_indent = 2
+[[buttons]]
+label = "EGM - 🐘🐡"
+choices = ["full", "partial", "off"]
+status = '{py} btn.py status'
+run = '{py} btn.py set {{choice}}'
+restart_agent = true
+"""
+
+BUTTON_SCRIPT = """import sys
+if sys.argv[1] == "set":
+    open("mode.txt", "w").write(sys.argv[2])
+    print("set", sys.argv[2])
+else:
+    print("MODE: " + open("mode.txt").read())
+"""
+
+
+def button_app(tmp_path):
+    skins_dir = tmp_path / "home" / "skins"
+    skins_dir.mkdir(parents=True)
+    py = '"' + sys.executable + '"'
+    (skins_dir / "buttons.toml").write_text(BUTTON_SKIN.format(py=py), encoding="utf-8")
+    (tmp_path / "btn.py").write_text(BUTTON_SCRIPT, encoding="utf-8")
+    (tmp_path / "mode.txt").write_text("off", encoding="utf-8")
+    return SpacemanApp(FAKE, tmp_path, settings=dict(SETTINGS, skin="buttons"), save_settings=False)
+
+
+async def test_skin_button_runs_and_restarts_agent(isolated):
+    app = button_app(isolated)
+    async with app.run_test(size=(120, 46)) as pilot:
+        await until(pilot, lambda: app.session_id is not None and app.eye_console.eye.mode == "idle")
+        await until(pilot, lambda: app.eye_console.button_values == ["off"])
+        await pilot.pause(0.2)
+        console = app.query_one(EyeConsole)
+        assert "button:0" in console.hits
+        first_pid = app.client.proc.pid
+        sid = app.session_id
+        row, a, _ = console.hits["button:0"]
+        await pilot.click(EyeConsole, offset=(a, row))
+        await until(pilot, lambda: len(app.screen.query(ChoiceMenu)) == 1)
+        await pilot.press("home", "enter")                 # off -> full (first choice)
+        await until(pilot, lambda: (isolated / "mode.txt").read_text() == "full")
+        await until(pilot, lambda: app.client and app.client.proc.pid != first_pid and app.eye_console.eye.mode == "idle")
+        await until(pilot, lambda: app.eye_console.button_values == ["full"])
+        assert app.session_id == sid                       # same conversation after the restart
+        assert app.eye_console.eye.mode != "error"
+
+
+async def test_title_indent_moves_title_only(isolated):
+    app = button_app(isolated)
+    async with app.run_test(size=(120, 46)) as pilot:
+        await until(pilot, lambda: app.session_id is not None and app.eye_console.eye.mode == "idle")
+        await pilot.pause(0.2)
+        console = app.query_one(EyeConsole)
+        lines = console.render().plain.splitlines()
+        title_row = next(i for i, l in enumerate(lines) if "TEST" in l)
+        model_row = next(i for i, l in enumerate(lines) if "MODEL" in l)
+        assert lines[model_row].index("MODEL") - lines[title_row].index("TEST") == 3

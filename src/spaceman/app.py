@@ -1,6 +1,8 @@
 """spaceManUI: the app. A conversation log on top, the eye console at the bottom, Qwen Code behind it (ACP)."""
 from __future__ import annotations
 
+import asyncio
+import shlex
 import time
 from pathlib import Path
 
@@ -168,6 +170,9 @@ class SpacemanApp(App):
         self._turn_started = 0.0
         self._last_kind = ""
         self.closing = False
+        self.restarting = False
+        self._after_connect = ""          # a note to show once the (re)connect finishes
+        self._restart_resume = False      # the next connect is a button restart (resume, else start fresh)
 
     # -- layout --------------------------------------------------------------------------------
     def compose(self) -> ComposeResult:
@@ -251,6 +256,10 @@ class SpacemanApp(App):
         yield SystemCommand("Settings", "Skin, sounds, animation, thinking (F2)", self.action_settings)
         yield SystemCommand("Sessions", "Pick up a saved conversation (Ctrl+R)", self.action_sessions)
         yield SystemCommand("New conversation", "Start fresh (Ctrl+N)", self.action_new_session)
+        for i, b in enumerate(self.skin.buttons):
+            for choice in b.choices:
+                yield SystemCommand(f"{b.label}: {choice}", b.description or f"Set {b.label} to {choice}",
+                                    lambda i=i, choice=choice: self.run_button(i, choice))
 
     # -- the eye and readouts ------------------------------------------------------------------
     def set_mode(self, mode: str) -> None:
@@ -268,6 +277,15 @@ class SpacemanApp(App):
         )
 
     def on_eye_console_readout_clicked(self, event: EyeConsole.ReadoutClicked) -> None:
+        if event.name.startswith("button:"):
+            for menu in self.screen.query(ChoiceMenu):
+                menu.close(None)
+                return
+            i = int(event.name.split(":", 1)[1])
+            b = self.skin.buttons[i]
+            current = self.eye_console.button_values[i]
+            self.screen.mount(ChoiceMenu(event.name, [(c, c) for c in b.choices], current, event.x, event.y))
+            return
         opt = self.config.get(CONFIG_KEYS.get(event.name, ""))
         if not opt:
             return
@@ -278,7 +296,9 @@ class SpacemanApp(App):
         self.screen.mount(ChoiceMenu(event.name, choices, opt.get("currentValue", ""), event.x, event.y))
 
     def on_choice_menu_chosen(self, event: ChoiceMenu.Chosen) -> None:
-        if event.value is not None:
+        if event.value is not None and event.key.startswith("button:"):
+            self.run_button(int(event.key.split(":", 1)[1]), event.value)
+        elif event.value is not None:
             self.set_config(CONFIG_KEYS[event.key], event.value)
         self.call_later(self.typing.focus)
 
@@ -307,6 +327,60 @@ class SpacemanApp(App):
             self.config = {o["id"]: o for o in options if "id" in o}
             self.update_hud()
 
+    # -- skin buttons ------------------------------------------------------------------------------
+    async def _shell(self, command: str, timeout: float = 120) -> tuple[int, str]:
+        proc = await asyncio.create_subprocess_shell(command, cwd=str(self.cwd), stdin=asyncio.subprocess.DEVNULL,
+                                                     stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        try:
+            out, _ = await asyncio.wait_for(proc.communicate(), timeout)
+        except asyncio.TimeoutError:
+            proc.kill()
+            return -1, f"timed out after {timeout:.0f}s"
+        return proc.returncode, out.decode(errors="replace").strip()
+
+    @work(group="buttons")
+    async def refresh_buttons(self) -> None:
+        for i, b in enumerate(self.skin.buttons):
+            if not b.status:
+                continue
+            code, out = await self._shell(b.status, timeout=30)
+            first = out.splitlines()[0].split() if code == 0 and out else []
+            self.eye_console.set_button_value(i, first[-1] if first else "?")
+
+    @work(exclusive=True, group="button-run")
+    async def run_button(self, index: int, choice: str) -> None:
+        b = self.skin.buttons[index]
+        if b.restart_agent and self.busy:
+            self.note(f"Still working on a reply. Esc stops it first, then set {b.label} again.")
+            return
+        code, out = await self._shell(b.run.replace("{choice}", shlex.quote(choice)))
+        if code != 0:
+            self.note(f"{b.label} {choice} failed (exit {code}):\n{out[-1500:]}", "error")
+            self.refresh_buttons()
+            return
+        self.eye_console.set_button_value(index, choice)
+        self.refresh_buttons()
+        message = out[-600:] or f"{b.label}: {choice}"
+        if b.restart_agent and self.client and self.client.alive:
+            self._after_connect = message + "\nAgent restarted with it."
+            await self.restart_agent()
+        else:
+            self.note(message)
+
+    async def restart_agent(self) -> None:
+        """Stop the agent and start it again on the same conversation (for settings it reads at startup)."""
+        sid = self.session_id
+        self.commands = []                # the new agent sends its own list
+        self.restarting = True
+        try:
+            if self.client:
+                await self.client.close()
+        finally:
+            self.restarting = False
+        self.resume, self.continue_last = sid, False
+        self._restart_resume = True
+        self.connect()
+
     # -- connecting --------------------------------------------------------------------------------
     @work(exclusive=True, group="connect")
     async def connect(self) -> None:
@@ -329,9 +403,17 @@ class SpacemanApp(App):
                 target = sessions[0]["sessionId"] if sessions else None
             except AcpError:
                 target = None
+        restarting, self._restart_resume = self._restart_resume, False
         try:
             if target:
-                await self.open_session(target)
+                try:
+                    await self.open_session(target)
+                except AcpError:
+                    if not restarting:
+                        raise
+                    # after a button restart: a conversation with no messages yet was never saved, so start fresh
+                    self.replaying = False
+                    await self.start_session()
             else:
                 await self.start_session()
         except AcpError as e:
@@ -342,6 +424,10 @@ class SpacemanApp(App):
         if self.start_effort:
             await self._set_now("reasoning_effort", self.start_effort)
         self.set_mode("idle")
+        self.refresh_buttons()
+        if self._after_connect:
+            self.note(self._after_connect)
+            self._after_connect = ""
 
     async def _set_now(self, config_id: str, value: str) -> None:
         try:
@@ -391,7 +477,7 @@ class SpacemanApp(App):
         self.set_timer(2.2, lambda: self.set_mode("offline"))
 
     def on_agent_exit(self, code, tail: str) -> None:
-        if self.closing:
+        if self.closing or self.restarting:
             return
         self.busy = False
         for p in self.prompts:

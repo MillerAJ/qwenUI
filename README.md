@@ -111,6 +111,26 @@ Copy the built-in `navigator.toml` into that folder under a new name and change 
 needs the keys it changes; everything else comes from Navigator. Then choose it in F2 settings, or use
 `spaceman --skin yourname`. You can add your own iris colours under `[palettes.<name>]`.
 
+### Buttons
+
+A skin can add buttons: clickable readouts on the line under the title, which are also listed in the Ctrl+P palette.
+Picking a choice runs a shell command in the agent's working directory:
+
+```toml
+[[buttons]]
+label = "Profile"
+choices = ["work", "home"]
+run = "my-profile-switch {choice}"     # {choice} is filled in, shell-quoted
+status = "my-profile-switch status"    # optional: the last word of its first output line is shown as the value
+restart_agent = true                   # optional: restart the agent afterwards, keeping the conversation
+description = "Switch my profile"      # optional: shown in the palette
+```
+
+Use `restart_agent` for settings the agent only reads when it starts, such as extensions or skills. A conversation
+with no messages yet hasn't been saved, so it starts fresh instead.
+
+`[layout] title_indent = <cells>` moves the title and subtitle closer to the eye (the default is 5).
+
 ## How it works
 
 ```

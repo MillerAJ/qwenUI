@@ -44,6 +44,8 @@ class Skin:
     tools: dict
     colors: dict              # hex strings, for CSS
     palettes: dict = field(default_factory=dict)   # name -> {edge, mid, deep, light} as rgb tuples
+    buttons: list = field(default_factory=list)    # [Button]: clickable readouts that run a command
+    title_indent: int = 5                           # cells between the eye and the title/subtitle lines
 
     def rgb(self, key: str) -> tuple:
         return _rgb(self.colors[key])
@@ -60,6 +62,34 @@ class Skin:
 
     def box_colors(self) -> dict:
         return {k: self.rgb(k) for k in ("background", "box_fill", "box_outline", "rim_dim", "rim_bright", "box_inner")}
+
+
+@dataclass
+class Button:
+    """A skin button: a clickable readout under the title. Picking a choice runs `run` with {choice} filled in
+    (shell-quoted) in the agent's working directory. `status` (optional) is a command whose first output line's last
+    word is shown as the current value. restart_agent restarts the agent afterwards (the conversation is kept), for
+    settings the agent only reads when it starts."""
+    label: str
+    choices: list
+    run: str
+    status: str = ""
+    restart_agent: bool = False
+    description: str = ""
+
+
+def _buttons(raw) -> list:
+    out = []
+    for b in raw or []:
+        try:
+            choices = [str(c) for c in b["choices"]]
+            if b["label"] and b["run"] and choices:
+                out.append(Button(label=str(b["label"]), choices=choices, run=str(b["run"]),
+                                  status=str(b.get("status", "")), restart_agent=bool(b.get("restart_agent", False)),
+                                  description=str(b.get("description", ""))))
+        except (KeyError, TypeError):
+            print(f"spaceman: skipping a skin button without label, choices and run: {b!r}", file=sys.stderr)
+    return out
 
 
 def _builtin_data() -> dict:
@@ -97,4 +127,6 @@ def load(name: str | None) -> Skin:
         name=data.get("name", "Skin"), title=data.get("title", ""), subtitle=data.get("subtitle", ""),
         window_title=data.get("window_title", "spaceManUI"), text=data["text"], status=data["status"],
         eye=data["eye"], tools=data["tools"], colors=data["colors"], palettes=palettes,
+        buttons=_buttons(data.get("buttons")),
+        title_indent=max(1, int((data.get("layout") or {}).get("title_indent", 5))),
     )
