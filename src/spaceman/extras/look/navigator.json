@@ -1,0 +1,50 @@
+{
+ "theme": "Navigator",
+ "customThemes": {
+  "Navigator": {
+   "name": "Navigator",
+   "type": "custom",
+   "Background": "#070B24",
+   "Foreground": "#E6F0FF",
+   "LightBlue": "#7FD4FF",
+   "AccentBlue": "#5FD3FF",
+   "AccentPurple": "#FF2BF0",
+   "AccentCyan": "#7DFFD8",
+   "AccentGreen": "#4FDC6A",
+   "AccentYellow": "#FFB62B",
+   "AccentRed": "#FF5C6C",
+   "Comment": "#6F86D6",
+   "Gray": "#8A8FB0",
+   "DiffAdded": "#1D5634",
+   "DiffRemoved": "#7A2434",
+   "DiffModified": "#12304A"
+  }
+ },
+ "customAsciiArt": "   ▄▄██████▄▄\n ▄█▀▀ ▄▄▄▄ ▀▀█▄\n██  ▄██▀▀██▄  ██\n██  ██ ◉◉ ██  ██\n██  ▀██▄▄██▀  ██\n ▀█▄▄ ▀▀▀▀ ▄▄█▀\n   ▀▀██████▀▀",
+ "customBannerTitle": "NAVIGATOR",
+ "customBannerSubtitle": "ship's computer online",
+ "customWittyPhrases": [
+  "Scanning sector...",
+  "Plotting a course...",
+  "Running diagnostics...",
+  "Calibrating sensors...",
+  "Consulting the star charts...",
+  "Reviewing telemetry...",
+  "Sweeping for anomalies...",
+  "Compiling a briefing...",
+  "Signal acquired, decoding...",
+  "Weighing the options...",
+  "Mapping the terrain...",
+  "Standing by for results..."
+ ],
+ "hideTips": true,
+ "statusLine": {
+  "type": "preset",
+  "useThemeColors": true,
+  "items": [
+   "model-with-reasoning",
+   "context-used",
+   "run-state"
+  ]
+ }
+}

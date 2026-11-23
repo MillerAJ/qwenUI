@@ -1,0 +1,86 @@
+# Navigator: the built-in skin. A ship's-computer eye in a grey metal mount on a glowing green console.
+# Copy this file to <config>/skins/<name>.toml (see `spaceman paths`) and change anything you like.
+# Every key is optional in your own skin: whatever you leave out comes from this file.
+
+name = "Navigator"
+title = "NAVIGATOR"            # the big readout next to the eye
+subtitle = "SHIP'S COMPUTER"   # the small line under it
+window_title = "spaceManUI"    # the header bar
+
+[text]
+placeholder = "Type a message, Enter sends   (Esc stops a reply, Ctrl+Q quits)"
+thinking = "thinking"          # label on the collapsible thought block
+greeting = "Systems online. Standing by."
+
+# Words in the status readout for each state.
+[status]
+idle = "ONLINE"
+think = "PROCESSING"
+speak = "TRANSMITTING"
+search = "SCANNING"
+fetch = "ACCESSING DATA"
+edit = "WRITING"
+execute = "EXECUTING"
+wait = "AWAITING ORDERS"
+error = "SYSTEM FAULT"
+offline = "OFFLINE"
+
+# Iris colour for each state. Names come from [palettes] below or the built-ins:
+# pink, cyan, amber, green, red, ice.
+[eye]
+idle = "pink"
+think = "pink"
+speak = "pink"
+search = "cyan"
+fetch = "amber"
+edit = "green"
+execute = "ice"
+wait = "amber"
+error = "red"
+offline = "ice"
+
+# Which state each kind of Qwen Code tool puts the eye in (ACP tool kinds).
+[tools]
+read = "fetch"
+search = "search"
+fetch = "fetch"
+edit = "edit"
+delete = "edit"
+move = "edit"
+execute = "execute"
+think = "think"
+other = "think"
+
+[colors]
+background = "#070b24"     # the screen behind everything
+header = "#0f6b57"
+box_fill = "#1d5634"       # the console you type in
+box_outline = "#091e11"
+rim_dim = "#289646"        # the console rim pulses between these two
+rim_bright = "#7dffa0"
+box_inner = "#beffc8"
+typing = "#ffffff"
+placeholder = "#7fbf94"
+agent_bubble = "#1d5634"
+agent_accent = "#4fdc6a"
+user_bubble = "#12304a"
+user_accent = "#5fd3ff"
+thought = "#8a8fb0"
+tool = "#9fb4ff"
+tool_ok = "#4fdc6a"
+tool_fail = "#ff5c6c"
+hud_title = "#7dffd8"
+hud_status = "#36b08f"
+hud_label = "#6f86d6"
+hud_value = "#c8d7ff"
+hud_dim = "#4a5ca0"
+menu_bg = "#14162b"
+menu_border = "#36b08f"
+wait_border = "#ffb62b"   # the frame around a permission request
+
+# Your own iris colours: edge (rim), mid (body), deep (shadow), light (the pale crescent).
+# [palettes.violet]
+# edge = "#b48cff"
+# mid = "#7d4fd6"
+# deep = "#2e1866"
+# light = "#e6d9ff"

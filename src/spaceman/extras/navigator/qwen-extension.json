@@ -1,0 +1,6 @@
+{
+  "name": "spaceman-navigator",
+  "version": "0.1.0",
+  "description": "Optional voice for the Navigator skin: a calm, economical ship's computer.",
+  "contextFileName": "QWEN.md"
+}

@@ -1,0 +1,41 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spaceman-ui"
+version = "0.1.0"
+description = "A skinnable, animated terminal UI for Qwen Code (talks to it over ACP)."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+authors = [{ name = "MillerAJ" }]
+keywords = ["qwen-code", "acp", "agent", "tui", "textual"]
+classifiers = [
+    "Environment :: Console",
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "textual>=8.2",
+    "textual-image>=0.14",
+    "textual-plotext>=1.0",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+spaceman = "spaceman.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/MillerAJ/spaceManUI"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spaceman"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

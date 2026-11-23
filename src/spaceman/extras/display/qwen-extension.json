@@ -1,0 +1,6 @@
+{
+  "name": "spaceman-display",
+  "version": "0.1.0",
+  "description": "Tells the agent how spaceManUI shows charts and images, so it can use them.",
+  "contextFileName": "QWEN.md"
+}
