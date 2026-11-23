@@ -251,11 +251,11 @@ class EyeConsole(Widget):
             line3 += [("   MODE ", lab, None), (h["mode"] + " ▾", link, "mode")]
         if h["think"]:
             line3 += [("   THINK ", lab, None), (h["think"] + " ▾", link, "think")]
+        for i, b in enumerate(s.buttons):                  # skin buttons sit with MODE and THINK: "LABEL value ▾"
+            line3 += [(f"   {b.label} ", lab, None), ((self.button_values[i] or "…") + " ▾", link, f"button:{i}")]
         line2 = [(s.subtitle, style(s.rgb("hud_dim"), bg), None)]
         if h["ctx"]:
             line2 += [("   CTX ", lab, None), (h["ctx"], val, None)]
-        for i, b in enumerate(s.buttons):                  # skin buttons: "LABEL value ▾", click for a menu
-            line2 += [(f"   {b.label} ", lab, None), ((self.button_values[i] or "…") + " ▾", link, f"button:{i}")]
         return [
             [(s.title, style(s.rgb("hud_title"), bg, bold=True), None),
              (f"   ▸ {h['status']}", style(s.rgb("hud_status"), bg, bold=True), None)],

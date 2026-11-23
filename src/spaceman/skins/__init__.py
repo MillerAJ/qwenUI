@@ -66,7 +66,7 @@ class Skin:
 
 @dataclass
 class Button:
-    """A skin button: a clickable readout under the title. Picking a choice runs `run` with {choice} filled in
+    """A skin button: a clickable readout on the MODEL line, after MODE and THINK. Picking a choice runs `run` with {choice} filled in
     (shell-quoted) in the agent's working directory. `status` (optional) is a command whose first output line's last
     word is shown as the current value. restart_agent restarts the agent afterwards (the conversation is kept), for
     settings the agent only reads when it starts."""

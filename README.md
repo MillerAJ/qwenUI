@@ -115,7 +115,8 @@ needs the keys it changes; everything else comes from Navigator. Then choose it 
 
 ### Buttons
 
-A skin can add buttons: clickable readouts on the line under the title, which are also listed in the Ctrl+P palette.
+A skin can add buttons: clickable readouts on the MODEL line, after MODE and THINK, which are also listed in the Ctrl+P
+palette. A narrow window crops them from the right; the palette always has them.
 Picking a choice runs a shell command in the agent's working directory:
 
 ```toml
