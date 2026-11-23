@@ -51,6 +51,21 @@ execute = "execute"
 think = "think"
 other = "think"
 
+# Tool names that pick the eye state, whatever kind the agent reports (MCP tools all report "other").
+# The name is the first word of the tool call's title, lower case.
+[tool_names]
+search_web = "search"
+web_search = "search"
+search_papers = "search"
+toolsearch = "think"
+fetch_page = "fetch"
+web_fetch = "fetch"
+read_paper = "fetch"
+screenshot = "fetch"
+cite = "fetch"
+make_pdf = "edit"
+make_diagram = "edit"
+
 [colors]
 background = "#070b24"     # the screen behind everything
 header = "#0f6b57"

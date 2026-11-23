@@ -26,6 +26,7 @@ from .paths import state_dir
 from .sound import Sound
 
 TYPING_ROWS = 4
+TOOL_HOLD = 2.0          # seconds a tool's eye colour shows at least
 CONFIG_KEYS = {"think": "reasoning_effort", "mode": "mode"}
 PLAN_ICON = {"pending": "○", "in_progress": "◐", "completed": "●"}
 
@@ -266,6 +267,13 @@ class SpacemanApp(App):
     def set_mode(self, mode: str) -> None:
         self.eye_console.eye.mode = mode
         self.eye_console.set_hud(status=self.skin.status_word(mode))
+
+    def tool_mode_start(self, mode: str) -> None:
+        """A tool started: show its state, and hold a working colour (search, fetch...) at least TOOL_HOLD seconds,
+        so a quick tool is still a visible pulse rather than a flicker."""
+        self.set_mode(mode)
+        if mode not in ("think", "speak", "idle"):
+            self.eye_console.eye.flash(mode, TOOL_HOLD)
 
     def update_hud(self) -> None:
         model = self.config.get("model")
@@ -653,7 +661,7 @@ class SpacemanApp(App):
             self.tools[u.get("toolCallId", "")] = card
             await log.mount(card)
             if not self.replaying:
-                self.set_mode(self.skin.tool_mode(u.get("kind")))
+                self.tool_mode_start(self.skin.tool_mode(u.get("kind"), u.get("title", "")))
         elif kind == "tool_call_update":
             tid = u.get("toolCallId", "")
             card = self.tools.get(tid)
@@ -675,7 +683,7 @@ class SpacemanApp(App):
                         self.eye_console.eye.flash("error", 0.8)
                     self.set_mode("think")
             elif status == "in_progress" and not self.replaying:
-                self.set_mode(self.skin.tool_mode(card.call.get("kind")))
+                self.tool_mode_start(self.skin.tool_mode(card.call.get("kind"), card.call.get("title", "")))
         elif kind == "plan":
             await self.show_plan(u.get("entries") or [])
         elif kind == "usage_update":

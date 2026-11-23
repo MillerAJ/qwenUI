@@ -110,8 +110,8 @@ class EyeState:
                 target_pal = self.skin.palette(mode)
             self._pal = eyeart.mix_palette(self._pal, target_pal, min(1.0, dt * 5))
 
-        if mode == "think":                             # pupil
-            target = 0.22 + 0.10 * math.sin(t * 3.9)
+        if mode == "think":                             # pupil: a slow, gentle pulse while it reasons
+            target = 0.24 + 0.04 * math.sin(t * 1.8)
         elif mode in ("search", "fetch", "edit", "execute"):
             target = 0.18 + 0.02 * math.sin(t * 8)
         elif mode == "speak":

@@ -5,6 +5,7 @@ else falls back to the built-in. User skins live in <config dir>/skins/<name>.to
 """
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass, field
 from importlib import resources
@@ -45,6 +46,7 @@ class Skin:
     colors: dict              # hex strings, for CSS
     palettes: dict = field(default_factory=dict)   # name -> {edge, mid, deep, light} as rgb tuples
     buttons: list = field(default_factory=list)    # [Button]: clickable readouts that run a command
+    tool_names: dict = field(default_factory=dict)  # tool name -> eye state; beats the ACP kind (MCP tools are "other")
     title_indent: int = 5                           # cells between the eye and the title/subtitle lines
 
     def rgb(self, key: str) -> tuple:
@@ -57,7 +59,12 @@ class Skin:
     def status_word(self, mode: str) -> str:
         return self.status.get(mode, mode.upper())
 
-    def tool_mode(self, kind: str | None) -> str:
+    def tool_mode(self, kind: str | None, title: str = "") -> str:
+        """The eye state for a tool call: by tool name first (from its title, e.g. "search_web (x MCP Server): ..."),
+        then by its ACP kind."""
+        name = re.split(r"[\s(:]", (title or "").strip(), maxsplit=1)[0].lower()
+        if name in self.tool_names:
+            return self.tool_names[name]
         return self.tools.get(kind or "other", self.tools.get("other", "think"))
 
     def box_colors(self) -> dict:
@@ -127,6 +134,7 @@ def load(name: str | None) -> Skin:
         name=data.get("name", "Skin"), title=data.get("title", ""), subtitle=data.get("subtitle", ""),
         window_title=data.get("window_title", "spaceManUI"), text=data["text"], status=data["status"],
         eye=data["eye"], tools=data["tools"], colors=data["colors"], palettes=palettes,
+        tool_names={str(k).lower(): str(v) for k, v in (data.get("tool_names") or {}).items()},
         buttons=_buttons(data.get("buttons")),
         title_indent=max(1, int((data.get("layout") or {}).get("title_indent", 5))),
     )

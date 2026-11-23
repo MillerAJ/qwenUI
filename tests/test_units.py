@@ -64,3 +64,13 @@ def test_look_apply_and_remove(tmp_path, monkeypatch):
     restored = json.loads(settings.read_text(encoding="utf-8"))
     assert restored["ui"] == {"theme": "Qwen Dark", "hideTips": False}
     assert list(tmp_path.glob("settings.json.bak-spaceman-*"))
+
+
+def test_tool_mode_by_name_beats_kind():
+    from spaceman import skins
+    s = skins.load("navigator")
+    assert s.tool_mode("other", 'search_web (adam-tools MCP Server): {"query": "x"}') == "search"
+    assert s.tool_mode("other", "fetch_page (adam-tools MCP Server): {}") == "fetch"
+    assert s.tool_mode("other", "ToolSearch: search_web fetch_page") == "think"
+    assert s.tool_mode("execute", "Shell: ls") == "execute"          # unknown name: falls back to the kind
+    assert s.tool_mode(None) == "think"
