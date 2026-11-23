@@ -206,6 +206,14 @@ class SpacemanApp(App):
         console.place_input()
 
     def pulse(self) -> None:
+        if self.closing:
+            return
+        try:
+            self._pulse()
+        except NoMatches:
+            pass                                          # the screen is going away (quitting)
+
+    def _pulse(self) -> None:
         self._tick += 1
         self.fit_eye()
         self.eye_console.talking = self.bubble is not None
