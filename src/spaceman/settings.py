@@ -5,7 +5,7 @@ import json
 
 from .paths import config_dir
 
-DEFAULTS = {"skin": "navigator", "sounds": False, "motion": True, "thoughts": True}
+DEFAULTS = {"skin": "navigator", "sounds": False, "motion": True, "thoughts": True, "tip_display_shown": False}
 
 
 def path():

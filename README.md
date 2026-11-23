@@ -1,6 +1,7 @@
-# spaceManUI
+# qwenUI
 
-A skinnable, animated terminal interface for [Qwen Code](https://github.com/QwenLM/qwen-code).
+A skinnable, animated terminal interface for [Qwen Code](https://github.com/QwenLM/qwen-code)
+(the app is called spaceManUI; the command is `spaceman`).
 
 A pixel-art ship's-computer eye sits on a glowing console at the bottom of your terminal and reacts to what
 the agent is doing. It thinks, scans, writes and waits for your approval, and its colour changes with each
@@ -24,15 +25,16 @@ talks to it over the [Agent Client Protocol](https://agentclientprotocol.com), t
 ## Install
 
 ```sh
-uv tool install git+https://github.com/MillerAJ/spaceManUI
+uv tool install git+https://github.com/MillerAJ/qwenUI
 # or
-pipx install git+https://github.com/MillerAJ/spaceManUI
+pipx install git+https://github.com/MillerAJ/qwenUI
 ```
 
 Then, in any project folder:
 
 ```sh
 spaceman
+spaceman ext install display    # once: lets the agent draw charts and show pictures here
 ```
 
 ## Using it

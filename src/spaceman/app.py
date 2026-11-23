@@ -1,6 +1,7 @@
 """spaceManUI: the app. A conversation log on top, the eye console at the bottom, Qwen Code behind it (ACP)."""
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 
@@ -356,6 +357,20 @@ class SpacemanApp(App):
         greeting = self.skin.text.get("greeting")
         if greeting:
             self.note(greeting)
+        self.maybe_tip()
+
+    def maybe_tip(self) -> None:
+        """Once, for new users: the display extension is what lets the agent draw charts and show pictures here."""
+        if self.settings.get("tip_display_shown"):
+            return
+        qwen_home = Path(os.environ.get("QWEN_HOME") or Path.home() / ".qwen")
+        if (qwen_home / "extensions" / "spaceman-display").exists():
+            return
+        self.note("Tip: run `spaceman ext install display` once so the agent knows it can draw charts and show "
+                  "pictures here. (`spaceman ext install navigator` adds the ship's-computer voice.)")
+        self.settings["tip_display_shown"] = True
+        if self.save_settings:
+            settings_mod.save(self.settings)
 
     async def open_session(self, session_id: str) -> None:
         self.clear_log()
