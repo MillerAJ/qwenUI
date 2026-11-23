@@ -36,6 +36,13 @@ def test_find_images(tmp_path):
     assert found == [tmp_path / "plot.png"]
 
 
+def test_path_map(tmp_path, monkeypatch):
+    (tmp_path / "ws" / "d").mkdir(parents=True)
+    (tmp_path / "ws" / "d" / "x.png").write_bytes(b"x")
+    monkeypatch.setenv("SPACEMAN_PATH_MAP", f"/files/={tmp_path / 'ws'}/")
+    assert find_images("see ![d](/files/d/x.png)", tmp_path) == [tmp_path / "ws" / "d" / "x.png"]
+
+
 def test_chart_spec():
     assert make_chart('{"type": "bar", "x": ["a", "b"], "y": [1, 2]}') is not None
     assert make_chart("not json") is None

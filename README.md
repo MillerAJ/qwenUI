@@ -67,6 +67,10 @@ spaceman --skin <name>        use a different skin
 spaceman --agent "qwen --acp --model x"   run the agent with extra flags
 ```
 
+If your agent refers to files through a URL prefix (for example `/files/` served by a web front end), map it
+to a folder so the pictures show up: `SPACEMAN_PATH_MAP="/files/=/path/to/workspace/"`. Separate several
+pairs like `PATH`.
+
 ## Extras (opt-in)
 
 ```sh

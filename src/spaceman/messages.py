@@ -7,6 +7,7 @@ import base64
 import difflib
 import io
 import json
+import os
 import re
 from pathlib import Path
 
@@ -306,13 +307,30 @@ def make_chart(spec_text: str) -> Widget | None:
 
 
 # --- images ----------------------------------------------------------------------------------------
+def path_map() -> list[tuple[str, Path]]:
+    """SPACEMAN_PATH_MAP: "prefix=folder" pairs (separated like PATH), for agents that refer to files by a URL-ish
+    prefix. Example: SPACEMAN_PATH_MAP="/files/=/srv/agent/workspace/" shows ![x](/files/a.png) from that folder."""
+    pairs = []
+    for item in os.environ.get("SPACEMAN_PATH_MAP", "").split(os.pathsep):
+        if "=" in item:
+            prefix, folder = item.split("=", 1)
+            if prefix and folder:
+                pairs.append((prefix, Path(folder).expanduser()))
+    return pairs
+
+
 def find_images(text: str, cwd: Path) -> list[Path]:
     found: list[Path] = []
+    mapping = path_map()
     candidates = MD_IMAGE_RE.findall(text) + PATH_IMAGE_RE.findall(text)
     for raw in candidates:
         if raw.startswith(("http://", "https://", "data:")):
             continue
         raw = raw.removeprefix("file://")
+        for prefix, folder in mapping:
+            if raw.startswith(prefix):
+                raw = str(folder / raw[len(prefix):])
+                break
         p = Path(raw).expanduser()
         if not p.is_absolute():
             p = cwd / p
