@@ -8,7 +8,7 @@ import pytest
 
 from spaceman.app import SpacemanApp
 from spaceman.eye.widget import ChoiceMenu, EyeConsole
-from spaceman.messages import AgentBubble, PermissionPrompt, ThoughtBlock, ToolCard, UserBubble
+from spaceman.messages import AgentBubble, PermissionPrompt, QuestionPrompt, ThoughtBlock, ToolCard, UserBubble
 
 FAKE = [sys.executable, str(Path(__file__).with_name("fake_agent.py"))]
 SETTINGS = {"skin": "navigator", "sounds": False, "motion": True, "thoughts": True}
@@ -207,3 +207,36 @@ async def test_title_indent_moves_title_only(isolated):
         title_row = next(i for i, l in enumerate(lines) if "TEST" in l)
         model_row = next(i for i, l in enumerate(lines) if "MODEL" in l)
         assert lines[model_row].index("MODEL") - lines[title_row].index("TEST") == 3
+
+
+async def test_questions_are_shown_and_answered(isolated):
+    import json
+    app = make_app(isolated)
+    async with app.run_test(size=(120, 60)) as pilot:
+        await until(pilot, lambda: app.session_id is not None and app.eye_console.eye.mode == "idle")
+        await type_and_send(pilot, app, "ask me")
+        await until(pilot, lambda: app.prompts and app.query("#q-submit"))
+        q = app.query_one(QuestionPrompt)
+        assert not app.query(PermissionPrompt)
+        assert len(q.query("RadioButton")) == 2 and len(q.query("Checkbox")) == 3
+        await pilot.click("#q0-o1")                       # Cyan
+        await pilot.click("#q1-o0")                       # Sounds
+        await pilot.click("#q1-o2")                       # Images
+        q.query_one("#q1-other").value = "Haptics"
+        await pilot.click("#q-submit")
+        await until(pilot, lambda: not app.busy)
+        got = json.loads((isolated / "question-answer.txt").read_text())
+        assert got == {"optionId": "proceed_once", "answers": {"0": "Cyan", "1": "Sounds, Images, Haptics"}}
+
+
+async def test_questions_cancel(isolated):
+    import json
+    app = make_app(isolated)
+    async with app.run_test(size=(120, 60)) as pilot:
+        await until(pilot, lambda: app.session_id is not None and app.eye_console.eye.mode == "idle")
+        await type_and_send(pilot, app, "ask me")
+        await until(pilot, lambda: app.prompts and app.query("#q-submit"))
+        await pilot.click("#q-cancel")
+        await until(pilot, lambda: not app.busy)
+        got = json.loads((isolated / "question-answer.txt").read_text())
+        assert got == {"optionId": None, "answers": None}

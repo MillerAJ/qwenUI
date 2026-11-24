@@ -5,6 +5,7 @@ Prompts it understands:
   anything                  -> thinks, asks permission for a shell command, runs it (or not), answers with a chart
   text containing "slow"    -> streams slowly until cancelled (session/cancel -> stopReason "cancelled")
   text containing "plain"   -> just answers, no tools
+  text containing "ask"     -> asks two questions with ask_user_question, writes the answers to question-answer.txt
 """
 import json
 import queue
@@ -66,8 +67,42 @@ def config_list():
     return list(CONFIG.values())
 
 
+QUESTIONS = [
+    {"question": "Which colour should the eye be?", "header": "Colour", "multiSelect": False,
+     "options": [{"label": "Pink", "description": "The default"}, {"label": "Cyan", "description": "Cool"}]},
+    {"question": "Which extras do you want?", "header": "Extras", "multiSelect": True,
+     "options": [{"label": "Sounds", "description": "Blips"}, {"label": "Charts", "description": "Plots"},
+                 {"label": "Images", "description": "Pictures"}]},
+]
+
+
+def ask_questions(rid):
+    """The shape Qwen Code 0.28.4 sends for its ask_user_question tool."""
+    tid = "call-q"
+    update({"sessionUpdate": "tool_call", "toolCallId": tid, "status": "pending", "title": "ask questions",
+            "content": [], "locations": [], "kind": "think", "rawInput": {"questions": QUESTIONS},
+            "_meta": {"toolName": "ask_user_question"}})
+    send({"jsonrpc": "2.0", "id": 0, "method": "session/request_permission", "params": {
+        "sessionId": SID,
+        "options": [{"optionId": "proceed_once", "name": "Submit", "kind": "allow_once"},
+                    {"optionId": "cancel", "name": "Cancel", "kind": "reject_once"}],
+        "toolCall": {"toolCallId": tid, "status": "pending", "title": "ask questions", "content": [], "locations": [],
+                     "kind": "think", "rawInput": {"questions": QUESTIONS},
+                     "_meta": {"toolName": "ask_user_question", "qwenInteractionKind": "user_question",
+                               "qwenQuestions": QUESTIONS}}}})
+    result = wait_response(0)["result"]
+    with open("question-answer.txt", "w") as f:
+        json.dump({"optionId": result["outcome"].get("optionId"), "answers": result.get("answers")}, f)
+    update({"sessionUpdate": "tool_call_update", "toolCallId": tid,
+            "status": "completed" if result.get("answers") else "failed"})
+    chunk("agent_message_chunk", "Thanks.")
+    send({"jsonrpc": "2.0", "id": rid, "result": {"stopReason": "end_turn"}})
+
+
 def do_prompt(rid, text):
     cancelled.clear()
+    if "ask" in text:
+        return ask_questions(rid)
     chunk("agent_message_chunk", "")                        # Qwen Code sends empty lifecycle chunks; ignore them
     if "slow" in text:
         for i in range(400):
@@ -151,3 +186,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -262,6 +262,123 @@ class PermissionPrompt(Vertical, can_focus=True):
         self._resolve(None)
 
 
+class QuestionPrompt(Vertical):
+    """Qwen Code's ask_user_question tool: the agent asks one or more multiple-choice questions.
+
+    They arrive as a permission request whose toolCall._meta.qwenQuestions holds
+    [{question, header, options: [{label, description}], multiSelect}]. The answer goes back as the
+    "Submit" option plus answers {"<question index>": "label"} (several labels joined with ", ")."""
+
+    BINDINGS = [Binding("escape", "cancel_questions", "Cancel", show=False)]
+
+    def __init__(self, params: dict) -> None:
+        super().__init__(classes="permission")
+        self.params = params
+        self.options = params.get("options") or []
+        call = params.get("toolCall") or {}
+        self.questions = ((call.get("_meta") or {}).get("qwenQuestions")
+                          or (call.get("rawInput") or {}).get("questions") or [])
+        self.future: asyncio.Future = asyncio.get_running_loop().create_future()
+
+    @staticmethod
+    def wants(params: dict) -> bool:
+        call = params.get("toolCall") or {}
+        meta = call.get("_meta") or {}
+        return meta.get("qwenInteractionKind") == "user_question" or meta.get("toolName") == "ask_user_question"
+
+    def compose(self) -> ComposeResult:
+        from textual.widgets import Checkbox, Input, RadioButton, RadioSet
+        yield Static(Text("? Questions for you", style="bold"), classes="permission-title")
+        for qi, q in enumerate(self.questions):
+            head = Text(f"\n{q.get('header') or f'Question {qi + 1}'}  ", style="bold")
+            head.append(str(q.get("question", "")))
+            if q.get("multiSelect"):
+                head.append("   (pick any)", style="dim")
+            yield Static(head)
+            opts = q.get("options") or []
+            if q.get("multiSelect"):
+                for oi, o in enumerate(opts):
+                    yield Checkbox(self._opt_label(o), id=f"q{qi}-o{oi}", compact=True)
+            else:
+                with RadioSet(id=f"q{qi}"):
+                    for oi, o in enumerate(opts):
+                        yield RadioButton(self._opt_label(o), id=f"q{qi}-o{oi}", compact=True)
+            yield Input(placeholder="Other: type your own answer (optional)", id=f"q{qi}-other", compact=True)
+        with Horizontal(classes="permission-buttons"):
+            yield Button("Submit", id="q-submit", variant="success", compact=True)
+            yield Button("Cancel", id="q-cancel", variant="error", compact=True)
+
+    @staticmethod
+    def _opt_label(o: dict) -> Text:
+        t = Text(str(o.get("label", "?")), style="bold")
+        if o.get("description"):
+            t.append("  " + str(o["description"]), style="dim")
+        return t
+
+    def on_mount(self) -> None:
+        self.scroll_visible()
+        try:
+            self.query("RadioSet, Checkbox, Input").first().focus()
+        except Exception:
+            pass
+
+    def answers(self) -> dict:
+        from textual.widgets import Checkbox, Input, RadioSet
+        out = {}
+        for qi, q in enumerate(self.questions):
+            labels = [str(o.get("label", "")) for o in q.get("options") or []]
+            picked = []
+            if q.get("multiSelect"):
+                picked = [labels[oi] for oi in range(len(labels)) if self.query_one(f"#q{qi}-o{oi}", Checkbox).value]
+            else:
+                idx = self.query_one(f"#q{qi}", RadioSet).pressed_index
+                if idx >= 0:
+                    picked = [labels[idx]]
+            other = self.query_one(f"#q{qi}-other", Input).value.strip()
+            if other:
+                picked = (picked + [other]) if q.get("multiSelect") else [other]
+            if picked:
+                out[str(qi)] = ", ".join(picked)
+        return out
+
+    def on_input_submitted(self, event) -> None:
+        event.stop()
+        self._submit()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        event.stop()
+        self._submit() if event.button.id == "q-submit" else self.action_cancel_questions()
+
+    def _option(self, kind_prefix: str) -> str | None:
+        for opt in self.options:
+            if opt.get("kind", "").startswith(kind_prefix):
+                return opt.get("optionId")
+        return None
+
+    def _submit(self) -> None:
+        answers = self.answers()
+        if not answers:
+            self.app.notify("Pick an answer (or type one) first, or Cancel.", severity="warning")
+            return
+        self._finish({"optionId": self._option("allow") or "proceed_once", "answers": answers},
+                     "\n".join(f"⚑ {self._header(int(k))}: {v}" for k, v in answers.items()))
+
+    def _header(self, qi: int) -> str:
+        return str(self.questions[qi].get("header") or f"Question {qi + 1}")
+
+    def action_cancel_questions(self) -> None:
+        self._finish(None, "⚑ questions cancelled")
+
+    def _finish(self, result, note: str) -> None:
+        if not self.future.done():
+            self.future.set_result(result)
+        self.remove_children()
+        self.mount(Static(Text(note, style="dim")))
+
+    def cancel(self) -> None:
+        self._finish(None, "⚑ questions cancelled")
+
+
 # --- charts --------------------------------------------------------------------------------------
 def make_chart(spec_text: str) -> Widget | None:
     """A ```chart block: JSON like

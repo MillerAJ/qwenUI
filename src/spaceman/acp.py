@@ -252,8 +252,12 @@ class AcpClient:
         try:
             if method == "session/request_permission":
                 choice = await self.on_permission(params.get("sessionId", ""), params) if self.on_permission else None
+                extra = {}
+                if isinstance(choice, dict):    # {"optionId": ..., plus extra result fields such as "answers"}
+                    extra = {k: v for k, v in choice.items() if k != "optionId"}
+                    choice = choice.get("optionId")
                 outcome = {"outcome": "selected", "optionId": choice} if choice else {"outcome": "cancelled"}
-                await self._send({"jsonrpc": "2.0", "id": rid, "result": {"outcome": outcome}})
+                await self._send({"jsonrpc": "2.0", "id": rid, "result": {"outcome": outcome, **(extra if choice else {})}})
             else:
                 await self._send({"jsonrpc": "2.0", "id": rid,
                                   "error": {"code": -32601, "message": f"{method} is not supported by spaceManUI"}})

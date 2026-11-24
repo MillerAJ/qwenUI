@@ -21,7 +21,7 @@ from . import settings as settings_mod
 from . import skins
 from .acp import AcpClient, AcpError
 from .eye.widget import ChoiceMenu, EyeConsole, TypingArea
-from .messages import AgentBubble, Notice, PermissionPrompt, ThoughtBlock, ToolCard, UserBubble
+from .messages import AgentBubble, Notice, PermissionPrompt, QuestionPrompt, ThoughtBlock, ToolCard, UserBubble
 from .paths import state_dir
 from .sound import Sound
 
@@ -717,7 +717,7 @@ class SpacemanApp(App):
 
     async def on_permission(self, session_id: str, params: dict) -> str | None:
         self.end_message()
-        prompt = PermissionPrompt(params)
+        prompt = QuestionPrompt(params) if QuestionPrompt.wants(params) else PermissionPrompt(params)
         self.prompts.append(prompt)
         await self.log_view.mount(prompt)
         self.log_view.scroll_end(animate=False)
